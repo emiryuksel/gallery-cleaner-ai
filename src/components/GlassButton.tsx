@@ -5,13 +5,16 @@ import {
   PressableProps,
   StyleSheet,
   Text,
+  View,
   ViewStyle,
 } from 'react-native';
 import { GlassSurface } from './GlassSurface';
+import { AppIcon, AppIconName } from './AppIcon';
 import { theme } from '../theme';
 
 interface GlassButtonProps extends Omit<PressableProps, 'style'> {
   label: string;
+  icon?: AppIconName;
   tintColor?: string;
   textColor?: string;
   loading?: boolean;
@@ -22,6 +25,7 @@ interface GlassButtonProps extends Omit<PressableProps, 'style'> {
 
 export function GlassButton({
   label,
+  icon,
   tintColor,
   textColor = theme.colors.textPrimary,
   loading,
@@ -43,6 +47,7 @@ export function GlassButton({
     >
       <GlassSurface
         isInteractive
+        glassEffectStyle="regular"
         tintColor={tintColor}
         radius={theme.radius.pill}
         style={[styles.surface, style]}
@@ -50,7 +55,10 @@ export function GlassButton({
         {loading ? (
           <ActivityIndicator color={textColor} />
         ) : (
-          <Text style={[styles.label, { color: textColor }]}>{label}</Text>
+          <View style={styles.content}>
+            {icon ? <AppIcon name={icon} size={18} color={textColor} /> : null}
+            <Text style={[styles.label, { color: textColor }]}>{label}</Text>
+          </View>
         )}
       </GlassSurface>
     </Pressable>
@@ -66,10 +74,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 54,
+    minHeight: 50,
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
   label: {
     ...theme.typography.label,
-    fontSize: 16,
   },
 });

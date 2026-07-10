@@ -10,6 +10,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { MediaCard } from './MediaCard';
+import { GlassSurface } from './GlassSurface';
+import { AppIcon } from './AppIcon';
 import { theme } from '../theme';
 import type { GalleryItem } from '../services/mediaLibrary';
 
@@ -101,10 +103,16 @@ export const SwipeCard = React.forwardRef<SwipeCardHandle, SwipeCardProps>(
           <MediaCard item={item} active={active} />
 
           <Animated.View style={[styles.overlay, styles.keepOverlay, keepStyle]}>
-            <Text style={[styles.overlayText, { color: theme.colors.keep }]}>TUT</Text>
+            <GlassSurface glassEffectStyle="regular" tintColor={theme.colors.keepTint} radius={theme.radius.pill} style={styles.overlayPill}>
+              <AppIcon name="checkmark" size={16} color={theme.colors.keep} />
+              <Text style={[styles.overlayText, { color: theme.colors.keep }]}>Tut</Text>
+            </GlassSurface>
           </Animated.View>
           <Animated.View style={[styles.overlay, styles.deleteOverlay, deleteStyle]}>
-            <Text style={[styles.overlayText, { color: theme.colors.delete }]}>SİL</Text>
+            <GlassSurface glassEffectStyle="regular" tintColor={theme.colors.deleteTint} radius={theme.radius.pill} style={styles.overlayPill}>
+              <AppIcon name="trash-outline" size={16} color={theme.colors.delete} />
+              <Text style={[styles.overlayText, { color: theme.colors.delete }]}>Sil</Text>
+            </GlassSurface>
           </Animated.View>
         </Animated.View>
       </GestureDetector>
@@ -121,24 +129,25 @@ const styles = StyleSheet.create({
   overlay: {
     position: 'absolute',
     top: theme.spacing.xl,
-    borderWidth: 4,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.md,
+  },
+  overlayPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
     paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
   },
   keepOverlay: {
     left: theme.spacing.xl,
-    borderColor: theme.colors.keep,
-    transform: [{ rotateZ: '-16deg' }],
+    transform: [{ rotateZ: '-8deg' }],
   },
   deleteOverlay: {
     right: theme.spacing.xl,
-    borderColor: theme.colors.delete,
-    transform: [{ rotateZ: '16deg' }],
+    transform: [{ rotateZ: '8deg' }],
   },
   overlayText: {
-    fontSize: 32,
-    fontWeight: '800',
-    letterSpacing: 2,
+    ...theme.typography.label,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });

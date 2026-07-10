@@ -10,11 +10,14 @@ const glassAvailable = isGlassEffectAPIAvailable();
 
 type GlassStyle = 'clear' | 'regular';
 
+type ElevationLevel = 'none' | 'glass' | 'floating';
+
 export interface GlassSurfaceProps extends ViewProps {
   glassEffectStyle?: GlassStyle;
   tintColor?: string;
   isInteractive?: boolean;
   radius?: number;
+  elevation?: ElevationLevel;
 }
 
 /**
@@ -29,9 +32,16 @@ export function GlassSurface({
   tintColor,
   isInteractive,
   radius = theme.radius.md,
+  elevation = 'none',
   ...rest
 }: GlassSurfaceProps) {
   const radiusStyle: ViewStyle = { borderRadius: radius };
+  const shadowStyle =
+    elevation === 'glass'
+      ? theme.shadow.glass
+      : elevation === 'floating'
+        ? theme.shadow.floating
+        : null;
 
   if (glassAvailable) {
     return (
@@ -40,7 +50,7 @@ export function GlassSurface({
         glassEffectStyle={glassEffectStyle}
         tintColor={tintColor}
         isInteractive={isInteractive}
-        style={[radiusStyle, style]}
+        style={[radiusStyle, shadowStyle, style]}
       >
         {children}
       </GlassView>
@@ -50,7 +60,7 @@ export function GlassSurface({
   return (
     <View
       {...rest}
-      style={[styles.fallback, radiusStyle, tintColor ? { backgroundColor: tintColor } : null, style]}
+      style={[styles.fallback, radiusStyle, shadowStyle, tintColor ? { backgroundColor: tintColor } : null, style]}
     >
       {children}
     </View>

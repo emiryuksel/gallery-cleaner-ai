@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { GlassSurface } from './GlassSurface';
+import { AppIcon } from './AppIcon';
 import { theme } from '../theme';
 import type { GalleryItem } from '../services/mediaLibrary';
 
@@ -28,29 +29,49 @@ export function MediaCard({ item, active }: MediaCardProps) {
       {isVideo ? (
         <VideoCardContent item={item} active={active} />
       ) : (
-        <Image
-          source={{ uri: item.uri }}
-          style={styles.media}
-          contentFit="cover"
-          transition={150}
-        />
+        <PhotoCardContent uri={item.uri} />
       )}
 
       <View style={styles.topBar} pointerEvents="none">
-        <GlassSurface radius={theme.radius.pill} style={styles.badge}>
+        <GlassSurface glassEffectStyle="clear" radius={theme.radius.pill} style={styles.badge}>
+          <AppIcon
+            name={isVideo ? 'videocam-outline' : 'image-outline'}
+            size={14}
+            color={theme.colors.onMedia}
+          />
           <Text style={styles.badgeText}>
-            {isVideo ? `🎬 ${formatDuration(item.durationMs)}` : '📷 Fotoğraf'}
+            {isVideo ? formatDuration(item.durationMs) : 'Fotoğraf'}
           </Text>
         </GlassSurface>
       </View>
 
       <View style={styles.bottomBar} pointerEvents="none">
-        <GlassSurface radius={theme.radius.md} style={styles.filenameBadge}>
+        <GlassSurface glassEffectStyle="clear" radius={theme.radius.md} style={styles.filenameBadge}>
           <Text style={styles.filename} numberOfLines={1}>
             {item.filename}
           </Text>
         </GlassSurface>
       </View>
+    </View>
+  );
+}
+
+function PhotoCardContent({ uri }: { uri: string }) {
+  return (
+    <View style={styles.mediaStage}>
+      <Image
+        source={{ uri }}
+        style={styles.mediaBackdrop}
+        contentFit="cover"
+        blurRadius={28}
+        transition={150}
+      />
+      <Image
+        source={{ uri }}
+        style={styles.media}
+        contentFit="contain"
+        transition={150}
+      />
     </View>
   );
 }
@@ -74,7 +95,7 @@ function VideoCardContent({ item, active }: MediaCardProps) {
       style={styles.media}
       player={player}
       nativeControls={false}
-      contentFit="cover"
+      contentFit="contain"
     />
   );
 }
@@ -86,10 +107,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: theme.colors.backgroundElevated,
   },
+  mediaStage: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  mediaBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    transform: [{ scale: 1.08 }],
+  },
   media: {
     ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
   },
   topBar: {
     position: 'absolute',
@@ -98,12 +125,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
     paddingVertical: theme.spacing.xs,
     paddingHorizontal: theme.spacing.md,
   },
   badgeText: {
     ...theme.typography.caption,
-    color: theme.colors.textPrimary,
+    color: theme.colors.onMedia,
   },
   bottomBar: {
     position: 'absolute',
@@ -119,6 +149,6 @@ const styles = StyleSheet.create({
   },
   filename: {
     ...theme.typography.caption,
-    color: theme.colors.textSecondary,
+    color: theme.colors.onMediaSecondary,
   },
 });

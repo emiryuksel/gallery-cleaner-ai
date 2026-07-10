@@ -1,3 +1,4 @@
+import * as MediaLibrary from 'expo-media-library';
 import {
   Asset,
   AssetField,
@@ -68,12 +69,15 @@ export async function fetchGalleryPage(offset: number): Promise<GalleryItem[]> {
 }
 
 /**
- * Seçilen asset'leri tek batch çağrısıyla siler → iOS tek bir onay popup'ı gösterir.
- * Silinen öğeler "Son Silinenler" albümüne 30 gün gider.
+ * Seçilen asset'leri siler → iOS tek bir onay popup'ı gösterir.
+ * Klasik API kullanılır; /next Asset.delete iOS'ta sınırlı galeri erişiminde reddedilir.
  */
 export async function deleteItems(items: GalleryItem[]): Promise<void> {
   if (items.length === 0) return;
-  await Asset.delete(items.map((item) => item.asset));
+  const deleted = await MediaLibrary.deleteAssetsAsync(items.map((item) => item.id));
+  if (!deleted) {
+    throw new Error('Silme işlemi tamamlanamadı.');
+  }
 }
 
 export { PAGE_SIZE };
