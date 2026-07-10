@@ -9,7 +9,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gallerycleaner.app",
-      "deploymentTarget": "26.0",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Fotoğraflarınızı kaydırarak temizleyebilmeniz için galerinize erişim izni gerekiyor.",
         "NSPhotoLibraryAddUsageDescription": "Değişiklikleri galerinize kaydedebilmek için izin gerekiyor."

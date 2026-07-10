@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   thumb: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
   },
   thumbOverlay: {
     position: 'absolute',

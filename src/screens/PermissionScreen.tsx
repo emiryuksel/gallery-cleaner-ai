@@ -1,6 +1,6 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { usePermissions, presentPermissionsPicker } from 'expo-media-library';
+import { usePermissions, presentPermissionsPickerAsync } from 'expo-media-library';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassSurface } from '../components/GlassSurface';
 import { GlassButton } from '../components/GlassButton';
@@ -69,7 +69,7 @@ export function PermissionScreen({ onGranted }: PermissionScreenProps) {
             label="Daha Fazla Fotoğraf Seç"
             fullWidth
             style={styles.secondaryBtn}
-            onPress={() => presentPermissionsPicker()}
+            onPress={() => presentPermissionsPickerAsync()}
           />
         ) : null}
       </View>

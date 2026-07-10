@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     marginVertical: theme.spacing.md,
   },
   cardWrapper: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
   },
   controls: {
     flexDirection: 'row',

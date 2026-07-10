@@ -3,7 +3,7 @@ import {
   AssetField,
   MediaType,
   Query,
-} from 'expo-media-library';
+} from 'expo-media-library/next';
 
 export type MediaKind = 'photo' | 'video';
 

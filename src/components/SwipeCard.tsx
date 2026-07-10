@@ -116,7 +116,7 @@ SwipeCard.displayName = 'SwipeCard';
 
 const styles = StyleSheet.create({
   card: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
   },
   overlay: {
     position: 'absolute',
