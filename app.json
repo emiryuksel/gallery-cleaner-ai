@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "SwipeBox: Photo Cleaner",
-    "slug": "gallery-cleaner-ai",
+    "name": "SwipeBox",
+    "slug": "swipebox",
     "scheme": "swipebox",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gallerycleaner.app",
+      "bundleIdentifier": "com.swipebox.app",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Fotoğraflarınızı kaydırarak temizleyebilmeniz için galerinize erişim izni gerekiyor.",
         "NSPhotoLibraryAddUsageDescription": "Değişiklikleri galerinize kaydedebilmek için izin gerekiyor."

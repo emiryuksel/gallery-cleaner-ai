@@ -61,7 +61,7 @@ export function PermissionScreen({ onGranted }: PermissionScreenProps) {
       <View style={styles.actions}>
         {denied ? (
           <Text style={styles.deniedText}>
-            İzin reddedildi. Ayarlar → Gallery Cleaner → Fotoğraflar'dan erişim verebilirsin.
+            İzin reddedildi. Ayarlar → SwipeBox → Fotoğraflar'dan erişim verebilirsin.
           </Text>
         ) : null}
         <GlassButton
