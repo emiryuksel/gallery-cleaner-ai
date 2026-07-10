@@ -1,17 +1,23 @@
 {
   "expo": {
-    "name": "gallery-cleaner-ai",
+    "name": "Gallery Cleaner",
     "slug": "gallery-cleaner-ai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gallerycleaner.app",
+      "deploymentTarget": "26.0",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Fotoğraflarınızı kaydırarak temizleyebilmeniz için galerinize erişim izni gerekiyor.",
+        "NSPhotoLibraryAddUsageDescription": "Değişiklikleri galerinize kaydedebilmek için izin gerekiyor."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#000000",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -20,6 +26,17 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Fotoğraflarınızı kaydırarak temizleyebilmeniz için galerinize erişim izni gerekiyor.",
+          "savePhotosPermission": "Değişiklikleri galerinize kaydedebilmek için izin gerekiyor.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      "expo-video"
+    ]
   }
 }
