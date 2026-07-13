@@ -1,6 +1,11 @@
 import React from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { GlassContainer, isGlassEffectAPIAvailable } from 'expo-glass-effect';
 import { GlassSurface } from '../components/GlassSurface';
 import { GlassButton } from '../components/GlassButton';
@@ -14,6 +19,7 @@ interface SwipeScreenProps {
   toDelete: GalleryItem[];
   onToDeleteChange: (toDelete: GalleryItem[]) => void;
   onReview: () => void;
+  onHome: () => void;
   onLogout: () => void;
   restoredQueue: GalleryItem[];
   onRestoredQueueHandled: () => void;
@@ -24,10 +30,48 @@ interface SwipeScreenProps {
 const PREFETCH_THRESHOLD = 8;
 const glassContainerAvailable = isGlassEffectAPIAvailable();
 
+/**
+ * Deste sarmalayıcısı: kart üste geçerken scale'i anlık zıplatmak yerine
+ * yumuşak bir spring ile büyütür — akışın sertliğini alır.
+ */
+function DeckCardWrapper({
+  isTop,
+  depth,
+  zIndex,
+  children,
+}: {
+  isTop: boolean;
+  depth: number;
+  zIndex: number;
+  children: React.ReactNode;
+}) {
+  // depth < 0: swipe edilip uçmakta olan kart — scale 1'de kalsın.
+  const targetScale = depth <= 0 ? 1 : 0.96 - depth * 0.02;
+  const scale = useSharedValue(targetScale);
+
+  React.useEffect(() => {
+    scale.value = withSpring(targetScale, { damping: 18, stiffness: 160, mass: 0.7 });
+  }, [targetScale, scale]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View
+      style={[styles.cardWrapper, { zIndex }, animatedStyle]}
+      pointerEvents={isTop ? 'auto' : 'none'}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
 export function SwipeScreen({
   toDelete,
   onToDeleteChange,
   onReview,
+  onHome,
   onLogout,
   restoredQueue,
   onRestoredQueueHandled,
@@ -126,8 +170,6 @@ export function SwipeScreen({
   };
 
   const finished = !loading && index >= items.length && !hasMore;
-  const processed = index;
-  const total = hasMore ? '...' : items.length;
 
   if (loading && items.length === 0) {
     return (
@@ -150,36 +192,59 @@ export function SwipeScreen({
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <GlassSurface
-          glassEffectStyle="clear"
-          radius={theme.radius.pill}
-          elevation="glass"
-          style={styles.progressBadge}
-        >
-          <Text style={styles.progressText}>{processed} / {total}</Text>
-          <View style={styles.progressDivider} />
-          <View style={styles.deleteCount}>
-            <AppIcon name="trash-outline" size={14} color={theme.colors.delete} />
-            <Text style={styles.deleteCountText}>{toDelete.length}</Text>
-          </View>
-        </GlassSurface>
-        <View style={styles.headerActions}>
-          <GlassButton
-            label={toDelete.length > 0 ? `İncele (${toDelete.length})` : 'İncele'}
-            icon="list-outline"
-            tintColor={toDelete.length > 0 ? theme.colors.deleteTint : undefined}
-            textColor={toDelete.length > 0 ? theme.colors.delete : theme.colors.textMuted}
-            style={styles.reviewBtn}
-            disabled={toDelete.length === 0}
+        <GlassIconButton
+          icon="chevron-back"
+          iconColor={theme.colors.accent}
+          size={44}
+          onPress={onHome}
+        />
+
+        {/* Ortada yalnızca İncele butonu: silinecek sayısıyla birlikte. */}
+        <View style={styles.statusWrap}>
+          <Pressable
             onPress={onReview}
-          />
-          <GlassIconButton
-            icon="log-out-outline"
-            iconColor={theme.colors.textSecondary}
-            size={44}
-            onPress={confirmLogout}
-          />
+            disabled={toDelete.length === 0}
+            style={({ pressed }) => [
+              styles.statusPressable,
+              pressed && toDelete.length > 0 ? styles.statusPressed : null,
+            ]}
+          >
+            <GlassSurface
+              glassEffectStyle="clear"
+              radius={theme.radius.pill}
+              elevation="glass"
+              tintColor={toDelete.length > 0 ? theme.colors.deleteTint : undefined}
+              style={styles.statusPill}
+            >
+              <AppIcon
+                name="trash-outline"
+                size={14}
+                color={toDelete.length > 0 ? theme.colors.delete : theme.colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.reviewText,
+                  { color: toDelete.length > 0 ? theme.colors.delete : theme.colors.textMuted },
+                ]}
+                numberOfLines={1}
+              >
+                {toDelete.length > 0 ? `İncele (${toDelete.length})` : 'İncele'}
+              </Text>
+              <AppIcon
+                name="chevron-forward"
+                size={13}
+                color={toDelete.length > 0 ? theme.colors.delete : theme.colors.textMuted}
+              />
+            </GlassSurface>
+          </Pressable>
         </View>
+
+        <GlassIconButton
+          icon="log-out-outline"
+          iconColor={theme.colors.textSecondary}
+          size={44}
+          onPress={confirmLogout}
+        />
       </View>
 
       <View style={styles.deck}>
@@ -196,16 +261,16 @@ export function SwipeScreen({
         ) : (
           items
             .map((item, i) => {
-              if (i < index || i > index + 2) return null;
+              // index - 1: az önce swipe edilen kart — ekran dışına uçuşunu
+              // tamamlaması için mount kalır, bir sonraki swipe'ta düşer.
+              if (i < index - 1 || i > index + 2) return null;
               const isTop = i === index;
               return (
-                <View
+                <DeckCardWrapper
                   key={item.id}
-                  style={[
-                    styles.cardWrapper,
-                    { zIndex: items.length - i, transform: [{ scale: isTop ? 1 : 0.96 - (i - index) * 0.02 }] },
-                  ]}
-                  pointerEvents={isTop ? 'auto' : 'none'}
+                  isTop={isTop}
+                  depth={i - index}
+                  zIndex={items.length - i}
                 >
                   <SwipeCard
                     ref={isTop ? topCardRef : undefined}
@@ -213,7 +278,7 @@ export function SwipeScreen({
                     active={isTop}
                     onSwiped={handleSwiped}
                   />
-                </View>
+                </DeckCardWrapper>
               );
             })
             .reverse()
@@ -316,16 +381,21 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingVertical: theme.spacing.sm,
     gap: theme.spacing.sm,
   },
-  headerActions: {
-    flexDirection: 'row',
+  statusWrap: {
+    flex: 1,
     alignItems: 'center',
-    gap: theme.spacing.sm,
   },
-  progressBadge: {
+  statusPressable: {
+    maxWidth: '100%',
+  },
+  statusPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
+  statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -334,28 +404,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     gap: theme.spacing.sm,
   },
-  progressText: {
+  reviewText: {
     ...theme.typography.label,
-    color: theme.colors.textPrimary,
-  },
-  progressDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 14,
-    backgroundColor: theme.colors.separator,
-  },
-  deleteCount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  deleteCountText: {
-    ...theme.typography.label,
-    color: theme.colors.delete,
-  },
-  reviewBtn: {
-    minHeight: 44,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.lg,
+    fontWeight: '600',
   },
   deck: {
     flex: 1,

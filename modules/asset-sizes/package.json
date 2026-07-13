@@ -1,0 +1,9 @@
+{
+  "name": "asset-sizes",
+  "version": "1.0.0",
+  "description": "Native module to bulk-read media asset file sizes",
+  "main": "index.ts",
+  "author": "SwipeBox",
+  "license": "MIT",
+  "homepage": "https://github.com/swipebox/asset-sizes"
+}

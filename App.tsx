@@ -5,13 +5,21 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { WelcomeScreen } from './src/screens/WelcomeScreen';
 import { PermissionScreen } from './src/screens/PermissionScreen';
+import { HomeScreen } from './src/screens/HomeScreen';
 import { SwipeScreen } from './src/screens/SwipeScreen';
 import { ReviewScreen } from './src/screens/ReviewScreen';
+import { LargestFilesScreen } from './src/screens/LargestFilesScreen';
 import { theme } from './src/theme';
 import { getStoredSession, clearSession } from './src/services/auth';
 import type { GalleryItem } from './src/services/mediaLibrary';
 
-type Route = { name: 'welcome' } | { name: 'permission' } | { name: 'swipe' } | { name: 'review' };
+type Route =
+  | { name: 'welcome' }
+  | { name: 'permission' }
+  | { name: 'home' }
+  | { name: 'swipe' }
+  | { name: 'review' }
+  | { name: 'largest' };
 
 export default function App() {
   const [booting, setBooting] = React.useState(true);
@@ -31,6 +39,9 @@ export default function App() {
   }, []);
 
   const openReview = () => setRoute({ name: 'review' });
+  const openSwipe = () => setRoute({ name: 'swipe' });
+  const openLargest = () => setRoute({ name: 'largest' });
+  const goHome = () => setRoute({ name: 'home' });
 
   const handleReviewBack = (remaining: GalleryItem[], restored: GalleryItem[]) => {
     setToDelete(remaining);
@@ -79,31 +90,51 @@ export default function App() {
             <PermissionScreen
               onGranted={() => {
                 setGalleryActive(true);
-                setRoute({ name: 'swipe' });
+                setRoute({ name: 'home' });
               }}
             />
           ) : null}
 
           {galleryActive ? (
             <View style={styles.galleryStack}>
-              <SwipeScreen
-                toDelete={toDelete}
-                onToDeleteChange={setToDelete}
-                onReview={openReview}
-                onLogout={handleLogout}
-                restoredQueue={restoredQueue}
-                onRestoredQueueHandled={() => setRestoredQueue([])}
-                deletedIdsQueue={deletedIdsQueue}
-                onDeletedIdsQueueHandled={() => setDeletedIdsQueue([])}
-              />
+              <View
+                style={styles.galleryStack}
+                pointerEvents={route.name === 'swipe' || route.name === 'review' ? 'auto' : 'none'}
+              >
+                <SwipeScreen
+                  toDelete={toDelete}
+                  onToDeleteChange={setToDelete}
+                  onReview={openReview}
+                  onHome={goHome}
+                  onLogout={handleLogout}
+                  restoredQueue={restoredQueue}
+                  onRestoredQueueHandled={() => setRestoredQueue([])}
+                  deletedIdsQueue={deletedIdsQueue}
+                  onDeletedIdsQueueHandled={() => setDeletedIdsQueue([])}
+                />
+              </View>
 
               {route.name === 'review' ? (
                 <ReviewScreen
-                  style={styles.reviewOverlay}
+                  style={styles.overlay}
                   items={toDelete}
                   onBack={handleReviewBack}
                   onDeleted={handleDeleted}
                 />
+              ) : null}
+
+              {route.name === 'home' ? (
+                <View style={styles.overlay}>
+                  <HomeScreen
+                    onOpenSwipe={openSwipe}
+                    onOpenLargest={openLargest}
+                    onLogout={handleLogout}
+                  />
+                </View>
+              ) : null}
+
+              {route.name === 'largest' ? (
+                <LargestFilesScreen style={styles.overlay} onBack={goHome} />
               ) : null}
             </View>
           ) : null}
@@ -125,7 +156,7 @@ const styles = StyleSheet.create({
   galleryStack: {
     flex: 1,
   },
-  reviewOverlay: {
+  overlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 10,
   },

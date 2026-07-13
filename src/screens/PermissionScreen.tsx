@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 import { usePermissions, presentPermissionsPickerAsync } from 'expo-media-library';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassSurface } from '../components/GlassSurface';
@@ -33,6 +33,14 @@ export function PermissionScreen({ onGranted }: PermissionScreenProps) {
   const canAskAgain = permission?.canAskAgain ?? true;
   const denied = status === 'denied' && !canAskAgain;
 
+  const handlePress = () => {
+    if (denied) {
+      Linking.openSettings();
+    } else {
+      handleRequest();
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.hero}>
@@ -65,12 +73,12 @@ export function PermissionScreen({ onGranted }: PermissionScreenProps) {
           </Text>
         ) : null}
         <GlassButton
-          label="Galeriye Erişim Ver"
-          icon="shield-checkmark-outline"
+          label={denied ? 'Ayarları Aç' : 'Galeriye Erişim Ver'}
+          icon={denied ? 'settings-outline' : 'shield-checkmark-outline'}
           tintColor={theme.colors.accentTint}
           textColor={theme.colors.accent}
           fullWidth
-          onPress={handleRequest}
+          onPress={handlePress}
         />
         {accessPrivileges === 'limited' ? (
           <GlassButton

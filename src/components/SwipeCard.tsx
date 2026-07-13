@@ -2,6 +2,7 @@ import React from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
   interpolate,
   runOnJS,
   useAnimatedStyle,
@@ -16,7 +17,9 @@ import { theme } from '../theme';
 import type { GalleryItem } from '../services/mediaLibrary';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.28;
+const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
+/** Bu yatay hızın (px/sn) üzerindeki bırakmalar, mesafe kısa olsa bile swipe sayılır. */
+const FLING_VELOCITY = 800;
 const OUT_DISTANCE = SCREEN_WIDTH * 1.5;
 
 export type SwipeDecision = 'keep' | 'delete';
@@ -40,9 +43,13 @@ export const SwipeCard = React.forwardRef<SwipeCardHandle, SwipeCardProps>(
     const flyOut = React.useCallback(
       (decision: SwipeDecision) => {
         const dir = decision === 'keep' ? 1 : -1;
-        translateX.value = withTiming(dir * OUT_DISTANCE, { duration: 260 }, () => {
-          runOnJS(onSwiped)(decision);
+        // Buton tetiklemesi: durağan karttan yumuşak ivmelenerek çıkış.
+        translateX.value = withTiming(dir * OUT_DISTANCE, {
+          duration: 340,
+          easing: Easing.in(Easing.quad),
         });
+        // Animasyonu beklemeden desteyi ilerlet; kart arkada uçmaya devam eder.
+        onSwiped(decision);
       },
       [onSwiped, translateX]
     );
@@ -58,19 +65,44 @@ export const SwipeCard = React.forwardRef<SwipeCardHandle, SwipeCardProps>(
         translateY.value = e.translationY * 0.2;
       })
       .onEnd((e) => {
-        if (Math.abs(e.translationX) > SWIPE_THRESHOLD) {
-          const decision: SwipeDecision = e.translationX > 0 ? 'keep' : 'delete';
-          const dir = decision === 'keep' ? 1 : -1;
-          translateX.value = withTiming(
-            dir * OUT_DISTANCE,
-            { duration: 220 },
-            () => {
-              runOnJS(onSwiped)(decision);
-            }
+        // Swipe sayılma koşulu: yeterli mesafe VEYA hızlı fırlatma (fling).
+        // Fling'de yön parmağın hızından alınır; kısa mesafeli hızlı atışlar da algılanır.
+        const isFling = Math.abs(e.velocityX) > FLING_VELOCITY;
+        const isFarEnough = Math.abs(e.translationX) > SWIPE_THRESHOLD;
+        if (isFling || isFarEnough) {
+          const dir = (isFling ? e.velocityX : e.translationX) > 0 ? 1 : -1;
+          const decision: SwipeDecision = dir > 0 ? 'keep' : 'delete';
+          // Desteyi HEMEN ilerlet: sonraki kart anında etkileşime açılır,
+          // bu kart arkada uçuşunu tamamlar (hızlı ardışık swipe kaybolmaz).
+          runOnJS(onSwiped)(decision);
+          // Parmağın bırakma hızını devral: süre kalan mesafe / hızdan türetilir,
+          // ease-out ile akış kesintisiz sürer (sert başlangıç yok).
+          const speed = Math.max(Math.abs(e.velocityX), 900);
+          const remaining = OUT_DISTANCE - Math.abs(e.translationX);
+          const duration = Math.min(400, Math.max(160, (remaining / speed) * 1000));
+          translateX.value = withTiming(dir * OUT_DISTANCE, {
+            duration,
+            easing: Easing.out(Easing.quad),
+          });
+          // Dikey sürüklenme yönünde hafif savrulma — doğal yörünge hissi.
+          translateY.value = withTiming(
+            translateY.value + e.velocityY * 0.12,
+            { duration, easing: Easing.out(Easing.quad) }
           );
         } else {
-          translateX.value = withSpring(0);
-          translateY.value = withSpring(0);
+          // Geri yaylanma: az salınımlı, yumuşak.
+          translateX.value = withSpring(0, {
+            velocity: e.velocityX,
+            damping: 20,
+            stiffness: 180,
+            mass: 0.9,
+          });
+          translateY.value = withSpring(0, {
+            velocity: e.velocityY,
+            damping: 20,
+            stiffness: 180,
+            mass: 0.9,
+          });
         }
       });
 

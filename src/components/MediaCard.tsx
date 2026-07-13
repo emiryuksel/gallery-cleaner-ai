@@ -1,11 +1,16 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { useEvent } from 'expo';
 import { GlassSurface } from './GlassSurface';
 import { AppIcon } from './AppIcon';
 import { theme } from '../theme';
-import type { GalleryItem } from '../services/mediaLibrary';
+import {
+  getVideoSourceUri,
+  resolveVideoFileUri,
+  type GalleryItem,
+} from '../services/mediaLibrary';
 
 function formatDuration(ms: number | null): string {
   if (!ms) return '';
@@ -77,26 +82,116 @@ function PhotoCardContent({ uri }: { uri: string }) {
 }
 
 function VideoCardContent({ item, active }: MediaCardProps) {
-  const player = useVideoPlayer(item.uri, (p) => {
+  // PHAsset URI'leri (ph://) yalnızca replaceAsync / constructor ile yüklenebildiği
+  // için player'ı boş başlatıp kaynağı efekt içinde veriyoruz.
+  const player = useVideoPlayer(null, (p) => {
     p.loop = true;
     p.muted = true;
   });
 
+  const { status } = useEvent(player, 'statusChange', { status: player.status });
+  const [failed, setFailed] = React.useState(false);
+  const attemptRef = React.useRef<'primary' | 'file'>('primary');
+  const primaryUri = getVideoSourceUri(item);
+
+  // ph:// yolu başarısız olursa file:// çözüp (iCloud indirmesine izin vererek) tekrar dene.
+  const tryFileFallback = React.useCallback(async () => {
+    if (attemptRef.current !== 'primary') return;
+    attemptRef.current = 'file';
+    const fileUri = await resolveVideoFileUri(item.id);
+    if (!fileUri) {
+      setFailed(true);
+      return;
+    }
+    try {
+      await player.replaceAsync(fileUri);
+    } catch {
+      setFailed(true);
+    }
+  }, [item.id, player]);
+
   React.useEffect(() => {
-    if (active) {
+    attemptRef.current = 'primary';
+    setFailed(false);
+    player.replaceAsync(primaryUri).catch(() => {
+      tryFileFallback();
+    });
+  }, [primaryUri, player, tryFileFallback]);
+
+  React.useEffect(() => {
+    if (status === 'error') {
+      if (attemptRef.current === 'primary') {
+        tryFileFallback();
+      } else {
+        setFailed(true);
+      }
+    }
+  }, [status, tryFileFallback]);
+
+  // Kaynak sonsuza dek 'loading'de kalırsa (ör. PHAsset desteği olmayan eski runtime)
+  // makul bir süre sonra file:// yoluna düş.
+  React.useEffect(() => {
+    if (status === 'readyToPlay' || failed) return;
+    const timer = setTimeout(() => {
+      tryFileFallback();
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [status, failed, tryFileFallback]);
+
+  const ready = status === 'readyToPlay';
+
+  React.useEffect(() => {
+    if (active && ready) {
       player.play();
     } else {
       player.pause();
     }
-  }, [active, player]);
+  }, [active, ready, player]);
 
   return (
-    <VideoView
-      style={styles.media}
-      player={player}
-      nativeControls={false}
-      contentFit="contain"
-    />
+    <View style={styles.mediaStage}>
+      <Image
+        source={{ uri: item.uri }}
+        style={styles.mediaBackdrop}
+        contentFit="cover"
+        blurRadius={28}
+        transition={150}
+      />
+      <View style={[styles.media, !ready && styles.mediaHidden]}>
+        <VideoView
+          style={StyleSheet.absoluteFill}
+          player={player}
+          nativeControls={false}
+          contentFit="contain"
+        />
+      </View>
+      {!ready ? (
+        <>
+          <Image
+            source={{ uri: item.uri }}
+            style={styles.media}
+            contentFit="contain"
+            transition={150}
+          />
+          <View style={styles.videoStatus} pointerEvents="none">
+            <GlassSurface
+              glassEffectStyle="clear"
+              radius={theme.radius.pill}
+              style={styles.videoStatusPill}
+            >
+              {failed ? (
+                <AppIcon name="alert-circle-outline" size={14} color={theme.colors.onMedia} />
+              ) : (
+                <ActivityIndicator size="small" color={theme.colors.onMedia} />
+              )}
+              <Text style={styles.videoStatusText}>
+                {failed ? 'Video oynatılamadı' : 'Video yükleniyor…'}
+              </Text>
+            </GlassSurface>
+          </View>
+        </>
+      ) : null}
+    </View>
   );
 }
 
@@ -117,6 +212,26 @@ const styles = StyleSheet.create({
   },
   media: {
     ...StyleSheet.absoluteFillObject,
+  },
+  mediaHidden: {
+    opacity: 0,
+  },
+  videoStatus: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  videoStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.overlay,
+  },
+  videoStatusText: {
+    ...theme.typography.caption,
+    color: theme.colors.onMedia,
   },
   topBar: {
     position: 'absolute',

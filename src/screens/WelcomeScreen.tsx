@@ -10,6 +10,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import Animated, {
+  Easing,
+  FadeInDown,
+  FadeInUp,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import {
   AnimatedSwipeBackdrop,
   WELCOME_DECOR_HEIGHT,
@@ -43,6 +54,92 @@ const FEATURES: { icon: AppIconName; title: string; body: string }[] = [
   },
 ];
 
+/**
+ * Girişteki mini kart destesi: üst kart sağa-sola salınır; yönüne göre
+ * "Tut" / "Sil" rozeti belirir — uygulamanın çekirdek deneyiminin önizlemesi.
+ * (Henüz galeri izni olmadığı için fotoğraf yerine glass ikon kartları kullanılır.)
+ */
+function WelcomeDeck() {
+  const sway = useSharedValue(0);
+
+  React.useEffect(() => {
+    sway.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1900, easing: Easing.inOut(Easing.sin) }),
+        withTiming(-1, { duration: 1900, easing: Easing.inOut(Easing.sin) })
+      ),
+      -1,
+      false
+    );
+  }, [sway]);
+
+  const topCardStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: sway.value * 26 },
+      { translateY: Math.abs(sway.value) * -5 },
+      { rotateZ: `${sway.value * 8}deg` },
+    ],
+  }));
+
+  const keepBadgeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sway.value, [0.15, 0.8], [0, 1], 'clamp'),
+  }));
+
+  const deleteBadgeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sway.value, [-0.8, -0.15], [1, 0], 'clamp'),
+  }));
+
+  return (
+    <View style={styles.deck}>
+      <View style={[styles.deckCard, styles.deckLeft]}>
+        <GlassSurface
+          glassEffectStyle="regular"
+          tintColor={theme.colors.accentTint}
+          radius={theme.radius.md}
+          style={styles.deckCardInner}
+        >
+          <AppIcon name="image-outline" size={24} color={theme.colors.accent} />
+        </GlassSurface>
+      </View>
+
+      <View style={[styles.deckCard, styles.deckRight]}>
+        <GlassSurface
+          glassEffectStyle="regular"
+          tintColor={theme.colors.deleteTint}
+          radius={theme.radius.md}
+          style={styles.deckCardInner}
+        >
+          <AppIcon name="videocam-outline" size={24} color={theme.colors.delete} />
+        </GlassSurface>
+      </View>
+
+      <Animated.View style={[styles.deckCard, styles.deckTop, topCardStyle]}>
+        <GlassSurface
+          glassEffectStyle="regular"
+          tintColor={theme.colors.keepTint}
+          radius={theme.radius.md}
+          style={styles.deckCardInner}
+        >
+          <AppIcon name="heart-outline" size={26} color={theme.colors.keep} />
+        </GlassSurface>
+
+        <Animated.View style={[styles.deckBadgeWrap, keepBadgeStyle]} pointerEvents="none">
+          <View style={styles.deckBadge}>
+            <AppIcon name="checkmark" size={13} color={theme.colors.keep} />
+            <Text style={[styles.deckBadgeText, { color: theme.colors.keep }]}>Tut</Text>
+          </View>
+        </Animated.View>
+        <Animated.View style={[styles.deckBadgeWrap, deleteBadgeStyle]} pointerEvents="none">
+          <View style={styles.deckBadge}>
+            <AppIcon name="trash-outline" size={13} color={theme.colors.delete} />
+            <Text style={[styles.deckBadgeText, { color: theme.colors.delete }]}>Sil</Text>
+          </View>
+        </Animated.View>
+      </Animated.View>
+    </View>
+  );
+}
+
 export function WelcomeScreen({ onAuthenticated }: WelcomeScreenProps) {
   const [loadingProvider, setLoadingProvider] = React.useState<string | null>(null);
   const [emailModalVisible, setEmailModalVisible] = React.useState(false);
@@ -68,59 +165,73 @@ export function WelcomeScreen({ onAuthenticated }: WelcomeScreenProps) {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <View style={styles.decorSlot}>
-          <AnimatedSwipeBackdrop />
-        </View>
+      {/* Dekor, layout'ta yer kaplamadan ekranın en üstünde arka plan katmanı olarak durur. */}
+      <View style={styles.decorSlot} pointerEvents="none">
+        <AnimatedSwipeBackdrop />
+      </View>
 
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <GlassSurface
-            glassEffectStyle="regular"
-            radius={theme.radius.xl}
-            elevation="glass"
-            style={styles.brandPanel}
-          >
+          <Animated.View entering={FadeInDown.duration(550)}>
             <GlassSurface
-              glassEffectStyle="clear"
-              tintColor={theme.colors.accentTint}
+              glassEffectStyle="regular"
               radius={theme.radius.xl}
-              style={styles.logoBadge}
+              elevation="floating"
+              style={styles.brandPanel}
             >
-              <AppIcon name="images-outline" size={32} color={theme.colors.accent} />
+              <WelcomeDeck />
+
+              <View style={styles.brandRow}>
+                <Text style={styles.brand}>SwipeBox</Text>
+                <GlassSurface
+                  glassEffectStyle="clear"
+                  tintColor={theme.colors.accentTint}
+                  radius={theme.radius.pill}
+                  style={styles.taglinePill}
+                >
+                  <Text style={styles.tagline}>Photo Cleaner</Text>
+                </GlassSurface>
+              </View>
+
+              <Text style={styles.heroText}>
+                Galerini kaydırarak temizle. Kararlar sende, kontrol sende.
+              </Text>
             </GlassSurface>
-            <Text style={styles.brand}>SwipeBox</Text>
-            <Text style={styles.tagline}>Photo Cleaner</Text>
-            <Text style={styles.heroText}>
-              Galerini kaydırarak temizle. Kararlar sende, kontrol sende.
-            </Text>
-          </GlassSurface>
+          </Animated.View>
 
           <View style={styles.featureList}>
-            {FEATURES.map((feature) => (
-              <GlassSurface
+            {FEATURES.map((feature, index) => (
+              <Animated.View
                 key={feature.title}
-                glassEffectStyle="regular"
-                radius={theme.radius.lg}
-                elevation="glass"
-                style={styles.featureCard}
+                entering={FadeInDown.duration(500).delay(140 + index * 80)}
               >
-                <View style={styles.featureIconWrap}>
-                  <AppIcon name={feature.icon} size={20} color={theme.colors.accent} />
-                </View>
-                <View style={styles.featureCopy}>
-                  <Text style={styles.featureTitle}>{feature.title}</Text>
-                  <Text style={styles.featureBody}>{feature.body}</Text>
-                </View>
-              </GlassSurface>
+                <GlassSurface
+                  glassEffectStyle="regular"
+                  radius={theme.radius.lg}
+                  elevation="glass"
+                  style={styles.featureCard}
+                >
+                  <View style={styles.featureIconWrap}>
+                    <AppIcon name={feature.icon} size={20} color={theme.colors.accent} />
+                  </View>
+                  <View style={styles.featureCopy}>
+                    <Text style={styles.featureTitle}>{feature.title}</Text>
+                    <Text style={styles.featureBody}>{feature.body}</Text>
+                  </View>
+                </GlassSurface>
+              </Animated.View>
             ))}
           </View>
         </ScrollView>
 
-        <View style={styles.authBlock}>
+        <Animated.View
+          style={styles.authBlock}
+          entering={FadeInUp.duration(550).delay(260)}
+        >
           {appleAvailable ? (
             <AppleAuthentication.AppleAuthenticationButton
               buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
@@ -152,7 +263,7 @@ export function WelcomeScreen({ onAuthenticated }: WelcomeScreenProps) {
           {loadingProvider ? (
             <ActivityIndicator color={theme.colors.accent} style={styles.loader} />
           ) : null}
-        </View>
+        </Animated.View>
       </SafeAreaView>
 
       <EmailSignInModal
@@ -167,6 +278,9 @@ export function WelcomeScreen({ onAuthenticated }: WelcomeScreenProps) {
   );
 }
 
+const DECK_CARD_WIDTH = 88;
+const DECK_CARD_HEIGHT = 116;
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -174,11 +288,13 @@ const styles = StyleSheet.create({
   },
   safe: {
     flex: 1,
-    backgroundColor: theme.colors.background,
   },
   decorSlot: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     height: WELCOME_DECOR_HEIGHT,
-    marginBottom: -theme.spacing.xl,
     zIndex: 0,
   },
   scroll: {
@@ -187,6 +303,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.sm,
   },
   brandPanel: {
@@ -196,23 +313,74 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
     backgroundColor: theme.colors.backgroundElevated,
   },
-  logoBadge: {
-    width: 64,
-    height: 64,
+  deck: {
+    width: '100%',
+    height: DECK_CARD_HEIGHT + theme.spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  deckCard: {
+    width: DECK_CARD_WIDTH,
+    height: DECK_CARD_HEIGHT,
+  },
+  deckCardInner: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deckLeft: {
+    position: 'absolute',
+    transform: [{ translateX: -46 }, { rotateZ: '-10deg' }, { scale: 0.92 }],
+    opacity: 0.9,
+  },
+  deckRight: {
+    position: 'absolute',
+    transform: [{ translateX: 46 }, { rotateZ: '10deg' }, { scale: 0.92 }],
+    opacity: 0.9,
+  },
+  deckTop: {
+    ...theme.shadow.glass,
+  },
+  deckBadgeWrap: {
+    position: 'absolute',
+    // Pill yüksekliğinin yarısı kadar yukarı: rozet kartın üst kenarına oturur.
+    top: -12,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  deckBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.backgroundElevated,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.glassBorder,
+  },
+  deckBadgeText: {
+    ...theme.typography.footnote,
+    fontWeight: '700',
+  },
+  brandRow: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
   brand: {
     ...theme.typography.largeTitle,
     color: theme.colors.textPrimary,
     textAlign: 'center',
   },
+  taglinePill: {
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+  },
   tagline: {
-    ...theme.typography.heading,
+    ...theme.typography.label,
     color: theme.colors.accent,
-    marginTop: 2,
-    textAlign: 'center',
   },
   heroText: {
     ...theme.typography.body,
